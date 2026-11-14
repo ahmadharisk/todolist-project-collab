@@ -2,8 +2,9 @@ import express from 'express'
 import { DatabaseSync } from 'node:sqlite'
 import path from 'node:path'
 
-// Database SQLite disimpan di file todos.db (dibuat otomatis kalau belum ada)
-const db = new DatabaseSync(path.join(import.meta.dirname, 'todos.db'))
+// Database SQLite disimpan di file todos.db (dibuat otomatis kalau belum ada).
+// Lokasinya bisa diganti lewat DB_PATH, dipakai di Docker agar data masuk volume.
+const db = new DatabaseSync(process.env.DB_PATH || path.join(import.meta.dirname, 'todos.db'))
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS todos (
@@ -19,6 +20,9 @@ const toTodo = (row) => ({ ...row, done: Boolean(row.done) })
 
 const app = express()
 app.use(express.json())
+
+// Di Docker, hasil build frontend ada di folder public dan disajikan langsung dari sini
+app.use(express.static(path.join(import.meta.dirname, 'public')))
 
 // Ambil semua todo, yang terbaru di atas
 app.get('/api/todos', (req, res) => {

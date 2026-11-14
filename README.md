@@ -28,9 +28,31 @@ npm run dev
 
 Lalu buka http://localhost:5173 di browser. Data tersimpan di `backend/todos.db`, dibuat otomatis saat backend pertama kali jalan.
 
+## Menjalankan dengan Docker
+
+Cukup satu perintah dari folder utama (tidak perlu Node.js terpasang):
+
+```bash
+docker compose up --build
+```
+
+Lalu buka http://localhost:3001. Frontend di-build lalu disajikan langsung oleh Express, jadi hanya ada satu container. Data tersimpan di volume `todos-data`, jadi tetap ada walau container dihentikan atau di-build ulang.
+
+Perintah lain yang berguna:
+
+```bash
+docker compose up -d --build   # jalan di background
+docker compose down            # hentikan (data tetap aman)
+docker compose down -v         # hentikan dan hapus data
+```
+
+Pakai Podman? Ganti `docker compose` dengan `podman compose`, perintah lainnya sama.
+
 ## Struktur
 
 ```
+Dockerfile         # build frontend, lalu jalankan backend yang menyajikannya
+docker-compose.yml # satu service + volume untuk database
 backend/
   server.js        # Express + SQLite, semua endpoint API
 frontend/

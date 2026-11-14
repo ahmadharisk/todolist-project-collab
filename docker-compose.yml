@@ -1,0 +1,11 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - todos-data:/data
+    init: true # supaya Ctrl+C / docker compose down langsung menghentikan node
+
+volumes:
+  todos-data:
