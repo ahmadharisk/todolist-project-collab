@@ -2,6 +2,8 @@
 
 Aplikasi todo list sederhana: React + Vite di frontend, Express + SQLite di backend.
 
+Penjelasan interaktif cara kerjanya (teknologi, arsitektur, alur data, API): buka [`docs/cara-kerja.html`](docs/cara-kerja.html) langsung di browser.
+
 ## Kebutuhan
 
 - Node.js 22.13 atau lebih baru (SQLite memakai modul bawaan Node `node:sqlite`, tanpa library tambahan)
@@ -53,6 +55,8 @@ Pakai Podman? Ganti `docker compose` dengan `podman compose`, perintah lainnya s
 ```
 Dockerfile         # build frontend, lalu jalankan backend yang menyajikannya
 docker-compose.yml # satu service + volume untuk database
+docs/
+  cara-kerja.html  # halaman penjelasan interaktif
 backend/
   server.js        # Express + SQLite, semua endpoint API
 frontend/

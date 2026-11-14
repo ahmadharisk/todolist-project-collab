@@ -1,0 +1,1253 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cara Kerja Todo List</title>
+<style>
+  :root {
+    --bg: #f4f5fb;
+    --card: #ffffff;
+    --input: #f4f5fb;
+    --code: #f6f7fb;
+    --text: #1f2333;
+    --muted: #646a80;
+    --border: #e3e5ee;
+    --accent: #6366f1;
+    --accent-text: #4f46e5;
+    --danger: #dc2626;
+
+    /* Satu warna per lapisan, dipakai konsisten di seluruh halaman */
+    --c-react: #4f46e5;
+    --c-vite: #a21caf;
+    --c-http: #0e7490;
+    --c-express: #b45309;
+    --c-sqlite: #047857;
+    --c-resp: #be185d;
+    --c-docker: #1d4ed8;
+
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.55;
+    color: var(--text);
+    background: var(--bg);
+    color-scheme: light dark;
+  }
+
+  /* Otomatis ikut mode gelap di sistem, sama seperti aplikasinya */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1117;
+      --card: #181b24;
+      --input: #11141b;
+      --code: #11141b;
+      --text: #e7e9f0;
+      --muted: #9aa0b4;
+      --border: #262a36;
+      --accent-text: #a5b4fc;
+      --danger: #f87171;
+
+      --c-react: #a5b4fc;
+      --c-vite: #f0abfc;
+      --c-http: #67e8f9;
+      --c-express: #fcd34d;
+      --c-sqlite: #6ee7b7;
+      --c-resp: #f9a8d4;
+      --c-docker: #93c5fd;
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: radial-gradient(circle at top, color-mix(in srgb, var(--accent) 14%, var(--bg)), var(--bg) 600px) no-repeat, var(--bg);
+  }
+
+  button, input { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.85em; }
+  :not(pre) > code { padding: 1px 6px; border-radius: 6px; background: var(--code); border: 1px solid var(--border); overflow-wrap: anywhere; }
+  pre {
+    margin: 10px 0 0;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--code);
+    border: 1px solid var(--border);
+    overflow-x: auto;
+    line-height: 1.5;
+    tab-size: 2;
+  }
+
+  /* Navigasi */
+  nav.top {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: color-mix(in srgb, var(--card) 85%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav.top div {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 8px 16px;
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  nav.top a {
+    padding: 6px 12px;
+    border-radius: 999px;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+  }
+  nav.top a:hover { color: var(--accent-text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+
+  main { max-width: 960px; margin: 0 auto; padding: 0 16px 80px; }
+  section { margin-top: 64px; scroll-margin-top: 64px; }
+  h1 { margin: 0; font-size: clamp(2rem, 6vw, 2.75rem); letter-spacing: -0.03em; line-height: 1.15; }
+  h2 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -0.02em; }
+  h3 { margin: 0; font-size: 1.05rem; }
+  .lead { margin: 0 0 20px; color: var(--muted); max-width: 680px; }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgb(0 0 0 / 0.06);
+  }
+
+  /* Label berwarna per lapisan */
+  .l-react { --c: var(--c-react); }
+  .l-vite { --c: var(--c-vite); }
+  .l-http { --c: var(--c-http); }
+  .l-express { --c: var(--c-express); }
+  .l-sqlite { --c: var(--c-sqlite); }
+  .l-resp { --c: var(--c-resp); }
+  .l-docker { --c: var(--c-docker); }
+  .chip {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--c, var(--accent-text));
+    background: color-mix(in srgb, var(--c, var(--accent)) 14%, transparent);
+    white-space: nowrap;
+  }
+
+  /* Hero / ringkasan */
+  .hero { padding-top: 56px; }
+  .hero .lead { font-size: 1.1rem; margin-top: 12px; }
+  .flow-pills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 28px; }
+  .flow-pills .chip { font-size: 0.85rem; padding: 4px 12px; }
+  .flow-pills i { color: var(--muted); font-style: normal; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .summary .card { padding: 18px; }
+  .summary p { margin: 8px 0 0; color: var(--muted); font-size: 0.95rem; }
+  .stats { display: flex; flex-wrap: wrap; gap: 24px; margin-top: 24px; }
+  .stats div { font-size: 0.85rem; color: var(--muted); }
+  .stats b { display: block; font-size: 1.6rem; color: var(--text); letter-spacing: -0.02em; }
+
+  /* Teknologi */
+  .tech-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+  .tech { padding: 18px; border-top: 4px solid var(--c); }
+  .tech h3 { margin-top: 8px; font-size: 1.2rem; }
+  .tech dl { margin: 12px 0 0; font-size: 0.92rem; }
+  .tech dt { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin-top: 10px; }
+  .tech dd { margin: 2px 0 0; }
+
+  /* Tombol pilihan (segmented control & tab) */
+  .seg { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap; }
+  .seg button { padding: 6px 14px; border: none; border-radius: 9px; background: none; color: var(--muted); }
+  .seg button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent-text); font-weight: 600; }
+
+  /* Arsitektur */
+  .chain-label { margin: 18px 0 8px; font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .chain-label:first-child { margin-top: 0; }
+  .chain { display: flex; align-items: stretch; }
+  .node {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 14px;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--c);
+    border-radius: 14px;
+    transition: box-shadow 0.15s, transform 0.15s;
+  }
+  .node:hover { transform: translateY(-1px); }
+  .node[aria-pressed='true'] { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
+  .node small { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; }
+  .arrow {
+    flex: 0 0 92px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    text-align: center;
+    line-height: 1.3;
+  }
+  .arrow::before { content: '→'; font-size: 1.4rem; line-height: 1; }
+  .detail { padding: 20px; margin-top: 16px; }
+  .detail h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .detail p { margin: 10px 0 0; }
+  .detail .file { margin-top: 12px; font-size: 0.85rem; color: var(--muted); }
+  .sub-label { margin: 16px 0 0; font-size: 0.78rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .note { margin: 8px 0 0; color: var(--muted); font-size: 0.9rem; }
+
+  /* Simulasi alur data */
+  .play { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 16px; align-items: start; }
+  .todo-app { overflow: hidden; }
+  .add-form { display: flex; gap: 8px; padding: 14px; border-bottom: 1px solid var(--border); }
+  .add-form input { flex: 1; min-width: 0; padding: 10px 12px; border: none; border-radius: 12px; background: var(--input); }
+  .add-form button { padding: 0 16px; border: none; border-radius: 12px; background: var(--accent); color: white; font-weight: 600; }
+  .add-form button:disabled { opacity: 0.4; cursor: default; }
+  .todo-list { margin: 0; padding: 0; list-style: none; }
+  .todo { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); }
+  .todo input[type='checkbox'] { width: 19px; height: 19px; margin: 0; flex-shrink: 0; accent-color: var(--accent); cursor: pointer; }
+  .todo span { flex: 1; overflow-wrap: anywhere; cursor: text; user-select: none; }
+  .todo.done span { color: var(--muted); text-decoration: line-through; }
+  .todo .edit { flex: 1; min-width: 0; padding: 4px 8px; margin: -4px -8px; border: none; border-radius: 8px; background: var(--input); }
+  .todo .delete { padding: 0 4px; border: none; background: none; color: var(--muted); font-size: 1.35rem; line-height: 1; }
+  .todo .delete:hover { color: var(--danger); }
+  .empty { margin: 0; padding: 28px 14px; text-align: center; color: var(--muted); }
+  .app-foot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; font-size: 0.85rem; color: var(--muted); }
+  .filters { display: flex; gap: 2px; }
+  .filters button { padding: 5px 9px; border: none; border-radius: 8px; background: none; }
+  .filters button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-text); font-weight: 600; }
+  .play-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 0.85rem; color: var(--muted); }
+  .btn {
+    padding: 7px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 0.88rem;
+    font-weight: 600;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent-text); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: white; }
+  .btn.primary:hover:not(:disabled) { color: white; filter: brightness(1.08); }
+
+  .db { margin-top: 16px; padding: 14px; }
+  .db h3 { font-size: 0.95rem; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .table-wrap { overflow-x: auto; margin-top: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th, td { padding: 6px 8px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td.title-cell { white-space: normal; overflow-wrap: anywhere; min-width: 120px; }
+  th { color: var(--muted); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  td { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  tr.flash td { animation: flash 1.6s ease-out; }
+  @keyframes flash { from { background: color-mix(in srgb, var(--c-sqlite) 30%, transparent); } to { background: transparent; } }
+
+  .trace { padding: 16px; }
+  .trace-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; }
+  .trace-head p { margin: 2px 0 0; font-size: 0.85rem; color: var(--muted); }
+  .trace-controls { display: flex; gap: 6px; }
+  .steps { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .step {
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--c);
+    border-radius: 12px;
+    animation: appear 0.25s ease-out;
+  }
+  .step.current { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 30%, transparent); }
+  .step-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .step-head .num { font-size: 0.8rem; font-weight: 700; color: var(--muted); min-width: 1.2em; }
+  .step p { margin: 6px 0 0; font-size: 0.92rem; }
+  @keyframes appear { from { opacity: 0; transform: translateY(6px); } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+  /* API */
+  .api-list { overflow: hidden; }
+  .api-row {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 76px minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: none;
+    text-align: left;
+  }
+  .api-row:last-child { border-bottom: none; }
+  .api-row:hover { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+  .api-row[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+  .api-row small { display: block; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.78rem; margin-top: 2px; }
+  .api-row .desc { color: var(--muted); font-size: 0.92rem; }
+  .method { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; }
+  .m-get { --c: var(--c-http); }
+  .m-post { --c: var(--c-sqlite); }
+  .m-patch { --c: var(--c-express); }
+  .m-delete { --c: var(--danger); }
+
+  /* Struktur folder */
+  .tree-wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 16px; align-items: start; }
+  .tree-wrap .detail { margin-top: 0; position: sticky; top: 72px; }
+  .tree { list-style: none; margin: 0; padding: 10px; }
+  .tree button {
+    width: 100%;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 6px 10px;
+    border: none;
+    border-radius: 8px;
+    background: none;
+    text-align: left;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88rem;
+  }
+  .tree button:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+  .tree button[aria-pressed='true'] { background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent-text); }
+  .tree .dir { font-weight: 700; }
+  .tree .icon { color: var(--muted); width: 1em; text-align: center; }
+  .tree .gen { color: var(--muted); font-style: italic; }
+
+  /* Cara menjalankan */
+  .run { padding: 20px; }
+  .run ol { margin: 0; padding-left: 20px; }
+  .run li { margin-top: 14px; }
+  .run li:first-child { margin-top: 0; }
+  .cmd { position: relative; }
+  .cmd pre { padding-right: 84px; }
+  .copy {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    padding: 4px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 0.78rem;
+  }
+  .copy:hover { border-color: var(--accent); color: var(--accent-text); }
+
+  footer.page { margin-top: 64px; text-align: center; color: var(--muted); font-size: 0.85rem; }
+
+  /* Layar sempit: semua kolom jadi satu, panah diagram jadi ke bawah */
+  @media (max-width: 760px) {
+    .play, .tree-wrap { grid-template-columns: minmax(0, 1fr); }
+    .tree-wrap .detail { position: static; }
+    .chain { flex-direction: column; }
+    .arrow { flex: none; flex-direction: row; gap: 8px; padding: 6px 0; }
+    .arrow::before { content: '↓'; font-size: 1.2rem; }
+    .api-row { grid-template-columns: 64px minmax(0, 1fr); gap: 4px 12px; }
+    .api-row .desc { grid-column: 2; }
+  }
+</style>
+</head>
+<body>
+<nav class="top" aria-label="Bagian halaman">
+  <div>
+    <a href="#ringkasan">Ringkasan</a>
+    <a href="#teknologi">Teknologi</a>
+    <a href="#arsitektur">Arsitektur</a>
+    <a href="#alur-data">Alur data</a>
+    <a href="#api">API</a>
+    <a href="#struktur">Struktur</a>
+    <a href="#menjalankan">Menjalankan</a>
+  </div>
+</nav>
+
+<main>
+  <!-- 1. Ringkasan -->
+  <section id="ringkasan" class="hero">
+    <h1>Cara kerja Todo List</h1>
+    <p class="lead">
+      Aplikasi todo sederhana: tampilan dibuat dengan React, data dilayani API Express, dan disimpan di SQLite.
+      Halaman ini menjelaskan teknologi yang dipakai dan perjalanan data dari klik di layar sampai tersimpan di database.
+    </p>
+    <div class="flow-pills" aria-label="Alur singkat">
+      <span class="chip l-react">React</span><i>→</i>
+      <span class="chip l-http">fetch /api/todos</span><i>→</i>
+      <span class="chip l-express">Express</span><i>→</i>
+      <span class="chip l-sqlite">SQLite</span>
+    </div>
+    <div class="summary">
+      <div class="card">
+        <span class="chip l-react">Frontend</span>
+        <h3 style="margin-top:8px">React + Vite</h3>
+        <p>Menampilkan daftar, menangani klik, dan memanggil API. Tidak menyimpan data sendiri, semua sumbernya dari server.</p>
+      </div>
+      <div class="card">
+        <span class="chip l-express">Backend</span>
+        <h3 style="margin-top:8px">Express</h3>
+        <p>Empat endpoint REST di <code>/api/todos</code> untuk ambil, tambah, ubah, dan hapus. Semuanya di satu file <code>server.js</code>.</p>
+      </div>
+      <div class="card">
+        <span class="chip l-sqlite">Database</span>
+        <h3 style="margin-top:8px">SQLite</h3>
+        <p>Satu tabel <code>todos</code> dengan kolom <code>id</code>, <code>title</code>, <code>done</code>, dan <code>created_at</code>, tersimpan di satu file.</p>
+      </div>
+    </div>
+    <div class="stats">
+      <div><b>4</b>endpoint API</div>
+      <div><b>1</b>tabel database</div>
+      <div><b>1</b>dependensi backend</div>
+      <div><b>1</b>container Docker</div>
+    </div>
+  </section>
+
+  <!-- 2. Teknologi -->
+  <section id="teknologi">
+    <h2>Teknologi</h2>
+    <p class="lead">Enam bagian yang membentuk aplikasi ini, untuk apa dipakai, di file mana, dan kenapa dipilih.</p>
+    <div class="tech-grid">
+      <article class="card tech l-react">
+        <span class="chip">Frontend</span>
+        <h3>React 19</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Menggambar daftar todo dan bereaksi pada klik. Data disimpan di state (<code>todos</code>, <code>title</code>, <code>filter</code>, <code>error</code>), dan layar otomatis berubah setiap state berubah.</dd>
+          <dt>Di mana</dt>
+          <dd><code>frontend/src/App.jsx</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Cukup komponen <code>App</code> dan <code>TodoItem</code> dengan <code>useState</code>. Tidak perlu library state tambahan untuk aplikasi sekecil ini.</dd>
+        </dl>
+      </article>
+      <article class="card tech l-vite">
+        <span class="chip">Alat build</span>
+        <h3>Vite 8</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Dev server dengan hot reload, proxy <code>/api</code> ke backend, dan build kode React menjadi file HTML, JS, dan CSS biasa.</dd>
+          <dt>Di mana</dt>
+          <dd><code>frontend/vite.config.js</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Cepat dan konfigurasinya hanya beberapa baris. Proxy membuat browser merasa frontend dan API satu alamat, jadi tidak perlu mengatur CORS.</dd>
+        </dl>
+      </article>
+      <article class="card tech l-http">
+        <span class="chip">Komunikasi</span>
+        <h3>fetch + JSON</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Mengirim request HTTP dari browser ke API. Semua panggilan lewat satu helper <code>api()</code> yang memasang header JSON dan mengubah respons error menjadi pesan di layar.</dd>
+          <dt>Di mana</dt>
+          <dd>Fungsi <code>api()</code> di <code>App.jsx</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Bawaan browser, jadi tidak perlu library seperti axios.</dd>
+        </dl>
+      </article>
+      <article class="card tech l-express">
+        <span class="chip">Backend</span>
+        <h3>Express 5</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Server HTTP: membaca body JSON (<code>express.json()</code>), menjalankan 4 route di <code>/api/todos</code>, dan di Docker juga menyajikan file frontend (<code>express.static</code>).</dd>
+          <dt>Di mana</dt>
+          <dd><code>backend/server.js</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Ringan dan dikenal banyak orang. Seluruh backend muat di satu file pendek, dan <code>express</code> adalah satu-satunya dependensi backend.</dd>
+        </dl>
+      </article>
+      <article class="card tech l-sqlite">
+        <span class="chip">Database</span>
+        <h3>SQLite (node:sqlite)</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Menyimpan todo di tabel <code>todos</code> dalam satu file <code>todos.db</code>. Tabel dibuat otomatis saat server pertama kali jalan.</dd>
+          <dt>Di mana</dt>
+          <dd><code>DatabaseSync</code> di <code>backend/server.js</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Modul bawaan Node 22.13+, jadi tidak perlu install library atau menjalankan server database. API-nya sinkron sehingga kode route lurus tanpa <code>await</code>. Modul ini masih berlabel eksperimental, karena itu script memakai <code>--disable-warning=ExperimentalWarning</code>.</dd>
+        </dl>
+      </article>
+      <article class="card tech l-docker">
+        <span class="chip">Deploy</span>
+        <h3>Docker Compose</h3>
+        <dl>
+          <dt>Untuk apa</dt>
+          <dd>Membungkus semuanya jadi satu container: build frontend, jalankan Express di port 3001, simpan database di volume.</dd>
+          <dt>Di mana</dt>
+          <dd><code>Dockerfile</code>, <code>docker-compose.yml</code></dd>
+          <dt>Kenapa</dt>
+          <dd>Cukup satu perintah dan tidak perlu Node terpasang. Build dua tahap membuat image akhir kecil karena alat build frontend tidak ikut masuk.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 3. Arsitektur -->
+  <section id="arsitektur">
+    <h2>Arsitektur</h2>
+    <p class="lead">Aplikasi bisa dijalankan dengan dua cara. Pilih mode, lalu klik kotak mana saja untuk melihat penjelasan dan kodenya.</p>
+    <div class="seg" id="arch-mode">
+      <button data-mode="dev" aria-pressed="true">Mode Dev</button>
+      <button data-mode="docker" aria-pressed="false">Mode Docker</button>
+    </div>
+    <div id="arch-diagram"></div>
+    <div class="card detail" id="arch-detail" aria-live="polite"></div>
+  </section>
+
+  <!-- 4. Alur data -->
+  <section id="alur-data">
+    <h2>Alur data</h2>
+    <p class="lead">
+      Coba pakai todo di bawah ini: tambah, centang, klik dua kali untuk edit, hapus, atau ganti filter.
+      Setiap aksi menghasilkan jejak langkah dari React sampai SQLite dan kembali lagi.
+      Datanya simulasi di browser, jadi tidak butuh server.
+    </p>
+    <div class="play" id="play">
+      <div>
+        <div class="card todo-app">
+          <form class="add-form" id="add-form">
+            <input id="add-input" placeholder="Mau mengerjakan apa hari ini?" aria-label="Todo baru" autocomplete="off" />
+            <button type="submit" id="add-btn" disabled>Tambah</button>
+          </form>
+          <ul class="todo-list" id="todo-list"></ul>
+          <div class="app-foot" id="app-foot"></div>
+        </div>
+        <div class="play-actions">
+          <button class="btn" id="reload">Simulasikan buka halaman</button>
+          <span>Klik dua kali pada todo untuk mengedit</span>
+        </div>
+        <div class="card db">
+          <h3><span class="chip l-sqlite">SQLite</span> Isi tabel <code>todos</code></h3>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>id</th><th>title</th><th>done</th><th>created_at</th></tr></thead>
+              <tbody id="db-rows"></tbody>
+            </table>
+          </div>
+          <p class="note">Perhatikan kolom <code>done</code>: di database isinya 0 atau 1, tetapi frontend menerima <code>false</code> atau <code>true</code>.</p>
+        </div>
+      </div>
+
+      <div class="card trace" aria-live="polite">
+        <div class="trace-head">
+          <div>
+            <h3 id="trace-title"></h3>
+            <p id="trace-count"></p>
+          </div>
+          <div class="trace-controls">
+            <button class="btn primary" id="trace-next">Langkah berikutnya</button>
+            <button class="btn" id="trace-all">Semua</button>
+          </div>
+        </div>
+        <ol class="steps" id="trace-steps"></ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. API -->
+  <section id="api">
+    <h2>API</h2>
+    <p class="lead">
+      Semua endpoint ada di <code>/api/todos</code> dan bertukar data dalam JSON. Klik satu baris untuk melihat contoh request dan respons.
+      Contoh curl memakai port 3001, yang berlaku di mode dev maupun Docker.
+    </p>
+    <div class="card api-list" id="api-list"></div>
+    <div class="card detail" id="api-detail" aria-live="polite"></div>
+  </section>
+
+  <!-- 6. Struktur -->
+  <section id="struktur">
+    <h2>Struktur folder</h2>
+    <p class="lead">Klik file atau folder untuk melihat isinya secara singkat.</p>
+    <div class="tree-wrap">
+      <ul class="card tree" id="tree"></ul>
+      <div class="card detail" id="tree-detail" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- 7. Menjalankan -->
+  <section id="menjalankan">
+    <h2>Cara menjalankan</h2>
+    <p class="lead">Pilih cara yang sesuai. Mode Dev butuh Node.js 22.13 atau lebih baru, mode Docker tidak butuh Node sama sekali.</p>
+    <div class="seg" id="run-tabs">
+      <button data-tab="dev" aria-pressed="true">Dev (Node)</button>
+      <button data-tab="docker" aria-pressed="false">Docker</button>
+      <button data-tab="podman" aria-pressed="false">Podman</button>
+    </div>
+
+    <div class="card run" data-panel="dev">
+      <ol>
+        <li>Terminal 1, jalankan backend di <code>http://localhost:3001</code>:
+          <div class="cmd"><pre>cd backend && npm install && npm run dev</pre><button class="copy">Salin</button></div>
+        </li>
+        <li>Terminal 2, jalankan frontend di <code>http://localhost:5173</code>:
+          <div class="cmd"><pre>cd frontend && npm install && npm run dev</pre><button class="copy">Salin</button></div>
+        </li>
+        <li>Buka <code>http://localhost:5173</code>. Data tersimpan di <code>backend/todos.db</code>, dibuat otomatis saat backend pertama kali jalan.</li>
+      </ol>
+    </div>
+
+    <div class="card run" data-panel="docker" hidden>
+      <ol>
+        <li>Dari folder utama, build dan jalankan:
+          <div class="cmd"><pre>docker compose up --build</pre><button class="copy">Salin</button></div>
+        </li>
+        <li>Buka <code>http://localhost:3001</code>. Frontend dan API dilayani dari container yang sama.</li>
+        <li>Perintah lain yang berguna. Jalan di background:
+          <div class="cmd"><pre>docker compose up -d --build</pre><button class="copy">Salin</button></div>
+          Hentikan, data tetap aman di volume:
+          <div class="cmd"><pre>docker compose down</pre><button class="copy">Salin</button></div>
+          Hentikan dan hapus data:
+          <div class="cmd"><pre>docker compose down -v</pre><button class="copy">Salin</button></div>
+        </li>
+      </ol>
+    </div>
+
+    <div class="card run" data-panel="podman" hidden>
+      <ol>
+        <li>Di Mac, nyalakan mesin Podman dulu:
+          <div class="cmd"><pre>podman machine start</pre><button class="copy">Salin</button></div>
+        </li>
+        <li>Build dan jalankan, lalu buka <code>http://localhost:3001</code>:
+          <div class="cmd"><pre>podman compose up --build</pre><button class="copy">Salin</button></div>
+        </li>
+        <li>Selesai mencoba, matikan mesinnya supaya tidak memakan memori:
+          <div class="cmd"><pre>podman machine stop</pre><button class="copy">Salin</button></div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <footer class="page">Halaman ini satu file HTML tanpa library luar: <code>docs/cara-kerja.html</code></footer>
+</main>
+
+<script>
+  const $ = (sel) => document.querySelector(sel)
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
+  const json = (v) => JSON.stringify(v, null, 2)
+  const pre = (code) => (code ? `<pre><code>${esc(code)}</code></pre>` : '')
+
+  // Satu cara untuk semua grup tombol pilihan: tandai yang aktif lewat aria-pressed
+  function press(group, btn) {
+    group.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b === btn))
+  }
+
+  // Di HP panel detail ada di bawah daftar yang panjang, jadi gulir ke sana setelah memilih
+  const showOnPhone = (el) =>
+    matchMedia('(max-width: 760px)').matches && el.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+
+  // ---------- Potongan kode asli dari repo ----------
+  const CODE = {
+    api: `async function api(path, method = 'GET', body) {
+  const res = await fetch(\`/api/todos\${path}\`, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body && JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || 'Gagal terhubung ke server')
+  }
+  return res.status === 204 ? null : res.json()
+}`,
+    proxy: `export default defineConfig({
+  plugins: [react()],
+  // Request ke /api diteruskan ke backend, jadi tidak perlu atur CORS
+  server: {
+    proxy: { '/api': 'http://localhost:3001' },
+  },
+})`,
+    table: `const db = new DatabaseSync(process.env.DB_PATH || path.join(import.meta.dirname, 'todos.db'))
+
+db.exec(\`
+  CREATE TABLE IF NOT EXISTS todos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    done INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  )
+\`)`,
+    get: `app.get('/api/todos', (req, res) => {
+  const rows = db.prepare('SELECT * FROM todos ORDER BY id DESC').all()
+  res.json(rows.map(toTodo))
+})`,
+    post: `app.post('/api/todos', (req, res) => {
+  const title = String(req.body?.title ?? '').trim()
+  if (!title) return res.status(400).json({ error: 'Judul todo tidak boleh kosong' })
+
+  const row = db.prepare('INSERT INTO todos (title) VALUES (?) RETURNING *').get(title)
+  res.status(201).json(toTodo(row))
+})`,
+    patch: `app.patch('/api/todos/:id', (req, res) => {
+  const todo = db.prepare('SELECT * FROM todos WHERE id = ?').get(Number(req.params.id))
+  if (!todo) return res.status(404).json({ error: 'Todo tidak ditemukan' })
+
+  const { title, done } = req.body ?? {}
+  const newTitle = title === undefined ? todo.title : String(title).trim()
+  if (!newTitle) return res.status(400).json({ error: 'Judul todo tidak boleh kosong' })
+  const newDone = done === undefined ? todo.done : done ? 1 : 0
+
+  const row = db
+    .prepare('UPDATE todos SET title = ?, done = ? WHERE id = ? RETURNING *')
+    .get(newTitle, newDone, todo.id)
+  res.json(toTodo(row))
+})`,
+    del: `app.delete('/api/todos/:id', (req, res) => {
+  const { changes } = db.prepare('DELETE FROM todos WHERE id = ?').run(Number(req.params.id))
+  if (!changes) return res.status(404).json({ error: 'Todo tidak ditemukan' })
+  res.status(204).end()
+})`,
+    stage1: `# Tahap 1: build frontend React menjadi file statis
+FROM node:24-alpine AS frontend
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build`,
+    stage2: `# Tahap 2: backend Express, sekaligus menyajikan hasil build frontend
+FROM node:24-alpine
+WORKDIR /app
+COPY backend/package*.json ./
+RUN npm ci --omit=dev
+COPY backend/server.js ./
+COPY --from=frontend /app/dist ./public
+
+RUN mkdir /data && chown node:node /data
+ENV DB_PATH=/data/todos.db
+USER node
+
+EXPOSE 3001
+CMD ["node", "--disable-warning=ExperimentalWarning", "server.js"]`,
+    static: `const app = express()
+app.use(express.json())
+
+// Di Docker, hasil build frontend ada di folder public dan disajikan langsung dari sini
+app.use(express.static(path.join(import.meta.dirname, 'public')))`,
+    compose: `services:
+  app:
+    build: .
+    ports:
+      - "3001:3001"
+    volumes:
+      - todos-data:/data
+    init: true
+
+volumes:
+  todos-data:`,
+  }
+
+  // ---------- 3. Arsitektur ----------
+  const ARCH = {
+    dev: [
+      {
+        label: 'Saat development: dua terminal, dua proses',
+        chain: [
+          {
+            id: 'browser-dev', layer: 'react', tag: 'Browser', title: 'Browser', sub: 'localhost:5173', arrow: 'halaman + fetch /api',
+            text: 'Kamu membuka <code>http://localhost:5173</code>. Browser mengunduh index.html dan kode React dari Vite. Setelah tampil, React memanggil <code>fetch(\'/api/todos\')</code>. Alamatnya relatif, jadi request dikirim ke asal yang sama (port 5173), bukan langsung ke 3001.',
+            file: 'frontend/src/App.jsx', code: CODE.api,
+          },
+          {
+            id: 'vite', layer: 'vite', tag: 'Vite', title: 'Vite dev server', sub: ':5173', arrow: 'proxy /api/*',
+            text: 'Vite melayani kode React dengan hot reload: simpan file, browser langsung berubah. Setiap request yang diawali <code>/api</code> diteruskan ke Express di port 3001. Bagi browser semuanya datang dari satu alamat, jadi tidak ada urusan CORS.',
+            file: 'frontend/vite.config.js', code: CODE.proxy,
+          },
+          {
+            id: 'express-dev', layer: 'express', tag: 'Express', title: 'Express API', sub: ':3001', arrow: 'query SQL',
+            text: 'Express menerima request <code>/api/todos</code>, memvalidasi input, menjalankan query SQL, lalu membalas JSON. Script <code>npm run dev</code> memakai <code>node --watch</code>, jadi server restart sendiri setiap <code>server.js</code> diubah.',
+            file: 'backend/server.js', code: CODE.get,
+          },
+          {
+            id: 'db-dev', layer: 'sqlite', tag: 'SQLite', title: 'todos.db', sub: 'backend/todos.db',
+            text: 'SQLite menyimpan semua data di satu file. Modulnya <code>node:sqlite</code> bawaan Node, jadi tidak ada library atau server database yang perlu dipasang. Tabel dibuat otomatis saat server pertama kali jalan berkat <code>CREATE TABLE IF NOT EXISTS</code>.',
+            file: 'backend/server.js', code: CODE.table,
+          },
+        ],
+      },
+    ],
+    docker: [
+      {
+        label: 'Saat build image (sekali, waktu docker compose up --build)',
+        chain: [
+          {
+            id: 'stage1', layer: 'docker', tag: 'Tahap 1', title: 'Build frontend', sub: 'npm ci + npm run build', arrow: 'salin dist/ ke public/',
+            text: 'Tahap pertama hanya untuk mem-build frontend. Vite mengubah JSX dan CSS menjadi file HTML, JS, dan CSS biasa di folder <code>dist/</code>. Tahap ini dibuang setelah selesai, jadi Vite dan node_modules frontend tidak ikut ke image akhir.',
+            file: 'Dockerfile', code: CODE.stage1,
+          },
+          {
+            id: 'stage2', layer: 'docker', tag: 'Tahap 2', title: 'Image akhir', sub: 'server.js + public/',
+            text: 'Image akhir hanya berisi dependensi produksi backend (express), <code>server.js</code>, dan hasil build frontend di <code>public/</code>. Aplikasi jalan sebagai user <code>node</code> (bukan root), dan lokasi database diarahkan ke <code>/data</code> lewat <code>DB_PATH</code>.',
+            file: 'Dockerfile', code: CODE.stage2,
+          },
+        ],
+      },
+      {
+        label: 'Saat aplikasi jalan: satu container',
+        chain: [
+          {
+            id: 'browser-docker', layer: 'react', tag: 'Browser', title: 'Browser', sub: 'localhost:3001', arrow: 'halaman + /api',
+            text: 'Di mode Docker cukup buka <code>http://localhost:3001</code>. Halaman dan API datang dari server yang sama, jadi proxy Vite tidak dibutuhkan. Kode React tidak berubah sama sekali: <code>fetch(\'/api/todos\')</code> tetap jalan karena alamatnya relatif.',
+            file: 'docker-compose.yml', code: CODE.compose,
+          },
+          {
+            id: 'express-docker', layer: 'express', tag: 'Container app', title: 'Express', sub: ':3001 static + API', arrow: 'query SQL',
+            text: 'Express sekarang punya dua tugas: menyajikan file hasil build dari folder <code>public/</code>, dan menjawab <code>/api/todos</code> seperti biasa. Di mode dev folder <code>public/</code> tidak ada, jadi baris <code>express.static</code> tidak berpengaruh. Opsi <code>init: true</code> di compose membuat Ctrl+C langsung menghentikan Node.',
+            file: 'backend/server.js', code: CODE.static,
+          },
+          {
+            id: 'volume', layer: 'sqlite', tag: 'Volume', title: 'todos-data', sub: '/data/todos.db',
+            text: 'Container bisa dihapus dan dibuat ulang kapan saja, jadi database tidak boleh tinggal di dalamnya. Volume <code>todos-data</code> dipasang di <code>/data</code>, dan <code>DB_PATH</code> membuat server menulis ke <code>/data/todos.db</code>. Data hanya hilang kalau kamu menjalankan <code>docker compose down -v</code>.',
+            file: 'docker-compose.yml + Dockerfile', code: `${CODE.compose}\n\n# Dockerfile\nENV DB_PATH=/data/todos.db`,
+          },
+        ],
+      },
+    ],
+  }
+  const ARCH_DEFAULT = { dev: 'vite', docker: 'express-docker' }
+  let archMode = 'dev'
+  let archSel = ARCH_DEFAULT.dev
+
+  function renderArch() {
+    const groups = ARCH[archMode]
+    $('#arch-diagram').innerHTML = groups.map((g) => `
+      <p class="chain-label">${g.label}</p>
+      <div class="chain">${g.chain.map((n) => `
+        <button class="node l-${n.layer}" data-id="${n.id}" aria-pressed="${n.id === archSel}">
+          <span class="chip">${n.tag}</span><strong>${n.title}</strong><small>${n.sub}</small>
+        </button>${n.arrow ? `<div class="arrow" aria-hidden="true"><span>${n.arrow}</span></div>` : ''}`).join('')}
+      </div>`).join('')
+
+    const n = groups.flatMap((g) => g.chain).find((n) => n.id === archSel)
+    $('#arch-detail').innerHTML = `
+      <h3><span class="chip l-${n.layer}">${n.tag}</span>${n.title}</h3>
+      <p>${n.text}</p>
+      <p class="file">File: <code>${n.file}</code></p>
+      ${pre(n.code)}`
+  }
+
+  $('#arch-mode').addEventListener('click', (e) => {
+    const btn = e.target.closest('button')
+    if (!btn) return
+    press($('#arch-mode'), btn)
+    archMode = btn.dataset.mode
+    archSel = ARCH_DEFAULT[archMode]
+    renderArch()
+  })
+  $('#arch-diagram').addEventListener('click', (e) => {
+    const node = e.target.closest('.node')
+    if (!node) return
+    archSel = node.dataset.id
+    renderArch()
+    showOnPhone($('#arch-detail'))
+  })
+
+  // ---------- 4. Alur data (simulasi) ----------
+  const LAYER_NAME = { react: 'React', http: 'HTTP', express: 'Express', sqlite: 'SQLite', resp: 'Respons' }
+  const FILTERS = { Semua: () => true, Aktif: (t) => !t.done, Selesai: (t) => t.done }
+  const toTodo = (row) => ({ ...row, done: Boolean(row.done) })
+  const now = () => new Date().toISOString().slice(0, 19).replace('T', ' ') // format CURRENT_TIMESTAMP SQLite
+
+  // "Database" tiruan di memori browser
+  const db = {
+    nextId: 3,
+    rows: [
+      { id: 1, title: 'Belajar React', done: 1, created_at: '2026-11-14 08:30:00' },
+      { id: 2, title: 'Coba docker compose up', done: 0, created_at: '2026-11-14 09:12:03' },
+    ],
+  }
+  const findRow = (id) => db.rows.find((r) => r.id === id)
+  let filter = 'Semua'
+  let editingId = null
+  let changedId = null
+
+  const httpReq = (method, url, body) =>
+    `${method} ${url}` + (body ? `\nContent-Type: application/json\n\n${JSON.stringify(body)}` : '')
+  const httpRes = (status, body) =>
+    `HTTP/1.1 ${status}` + (body === undefined ? '\n\n(tanpa body)' : `\nContent-Type: application/json\n\n${json(body)}`)
+  const viaProxy = 'Di mode dev, Vite meneruskannya ke Express di port 3001. Di mode Docker langsung diterima Express.'
+
+  const TRACES = {
+    load() {
+      const rows = [...db.rows].sort((a, b) => b.id - a.id)
+      return [
+        { layer: 'react', title: 'Komponen App tampil pertama kali',
+          text: '<code>useEffect</code> dengan dependensi <code>[]</code> berjalan sekali setelah App tampil, lalu meminta daftar todo. Semua aksi dibungkus <code>handle()</code>: kalau gagal, pesan error tampil merah di atas daftar.',
+          code: `useEffect(() => {\n  handle(async () => setTodos(await api('')))\n}, [])` },
+        { layer: 'http', title: 'Browser mengirim request',
+          text: `<code>api('')</code> memanggil <code>fetch('/api/todos')</code>. ${viaProxy}`,
+          code: httpReq('GET', '/api/todos') },
+        { layer: 'express', title: "Route app.get('/api/todos')",
+          text: 'Route ini tidak butuh input apa pun, langsung bertanya ke database.',
+          code: CODE.get },
+        { layer: 'sqlite', title: 'Ambil semua baris',
+          text: `Semua baris diambil, yang terbaru (id terbesar) di atas. Hasilnya ${rows.length} baris.`,
+          code: 'SELECT * FROM todos ORDER BY id DESC' },
+        { layer: 'resp', title: 'Server membalas 200 OK',
+          text: '<code>toTodo</code> mengubah kolom <code>done</code> dari 0/1 menjadi false/true sebelum dikirim sebagai JSON.',
+          code: httpRes('200 OK', rows.map(toTodo)) },
+        { layer: 'react', title: 'State todos diisi',
+          text: 'Data dari server disimpan ke state, lalu React menggambar daftar di layar.',
+          code: 'setTodos(data)' },
+      ]
+    },
+
+    add(row) {
+      return [
+        { layer: 'react', title: 'Form dikirim',
+          text: 'Tombol Tambah (atau Enter) memicu <code>onSubmit</code>. <code>addTodo</code> mencegah halaman reload, membuang spasi di ujung judul, dan langsung mengosongkan input supaya bisa lanjut mengetik.',
+          code: `function addTodo(e) {\n  e.preventDefault()\n  const newTitle = title.trim()\n  if (!newTitle) return\n  setTitle('')\n  handle(async () => {\n    const todo = await api('', 'POST', { title: newTitle })\n    ...` },
+        { layer: 'http', title: 'Browser mengirim request',
+          text: `Body dikirim sebagai JSON. ${viaProxy}`,
+          code: httpReq('POST', '/api/todos', { title: row.title }) },
+        { layer: 'express', title: "Route app.post('/api/todos')",
+          text: 'Judul diubah jadi string lalu di-trim. Kalau kosong, server membalas 400 dan berhenti. Validasi di server tetap perlu walaupun tombol Tambah sudah nonaktif saat input kosong, karena siapa pun bisa memanggil API langsung.',
+          code: CODE.post },
+        { layer: 'sqlite', title: 'Simpan baris baru',
+          text: 'Tanda <code>?</code> diisi oleh SQLite, bukan disambung sebagai teks, sehingga aman dari SQL injection. <code>id</code>, <code>done</code>, dan <code>created_at</code> diisi otomatis oleh default kolom. <code>RETURNING *</code> langsung mengembalikan baris yang baru dibuat.',
+          code: `INSERT INTO todos (title) VALUES (?) RETURNING *\n-- parameter: ${JSON.stringify([row.title])}` },
+        { layer: 'resp', title: 'Server membalas 201 Created',
+          text: 'Status 201 artinya ada data baru yang dibuat. Body-nya todo lengkap dengan id dari database.',
+          code: httpRes('201 Created', toTodo(row)) },
+        { layer: 'react', title: 'Todo baru ditaruh paling atas',
+          text: 'Frontend tidak memuat ulang seluruh daftar. Todo dari respons cukup ditambahkan di depan array.',
+          code: 'setTodos((prev) => [todo, ...prev])' },
+      ]
+    },
+
+    toggle(row) {
+      const done = Boolean(row.done)
+      return patchSteps(row, { done }, {
+        layer: 'react', title: 'Checkbox diklik',
+        text: `<code>TodoItem</code> memanggil <code>onUpdate</code> dengan nilai kebalikan dari status sekarang, jadi <code>done</code> berubah menjadi <code>${done}</code>.`,
+        code: `onChange={() => onUpdate(todo.id, { done: !todo.done })}\n\n// di App: updateTodo(${row.id}, { done: ${done} })`,
+      })
+    },
+
+    edit(row) {
+      return patchSteps(row, { title: row.title }, {
+        layer: 'react', title: 'Judul diedit',
+        text: '<code>TodoItem</code> punya state sendiri, <code>editing</code> dan <code>text</code>. Klik dua kali menyalakan mode edit. Saat input kehilangan fokus (Enter juga memicu blur), <code>save()</code> mengirim judul baru hanya kalau memang berubah.',
+        code: `function save() {\n  setEditing(false)\n  const newTitle = text.trim()\n  if (newTitle && newTitle !== todo.title) onUpdate(todo.id, { title: newTitle })\n  else setText(todo.title)\n}`,
+      })
+    },
+
+    remove(row) {
+      return [
+        { layer: 'react', title: 'Tombol × diklik',
+          text: '<code>TodoItem</code> memanggil <code>onDelete</code>, yang menjalankan <code>deleteTodo</code> di App.',
+          code: `function deleteTodo(id) {\n  handle(async () => {\n    await api(\`/\${id}\`, 'DELETE')\n    setTodos((prev) => prev.filter((t) => t.id !== id))\n  })\n}` },
+        { layer: 'http', title: 'Browser mengirim request',
+          text: `Id todo ada di URL, tidak perlu body. ${viaProxy}`,
+          code: httpReq('DELETE', `/api/todos/${row.id}`) },
+        { layer: 'express', title: "Route app.delete('/api/todos/:id')",
+          text: '<code>run()</code> mengembalikan <code>changes</code>, yaitu jumlah baris yang terhapus. Kalau 0, berarti todo tidak ada dan server membalas 404.',
+          code: CODE.del },
+        { layer: 'sqlite', title: 'Hapus baris',
+          text: 'Satu baris terhapus, jadi <code>changes</code> bernilai 1.',
+          code: `DELETE FROM todos WHERE id = ?\n-- parameter: [${row.id}]` },
+        { layer: 'resp', title: 'Server membalas 204 No Content',
+          text: 'Status 204 artinya berhasil tanpa isi. Helper <code>api()</code> mengenali 204 dan tidak mencoba membaca JSON.',
+          code: httpRes('204 No Content') },
+        { layer: 'react', title: 'Todo dibuang dari state',
+          text: 'Semua todo kecuali yang dihapus dipertahankan, lalu React menggambar ulang daftar.',
+          code: 'setTodos((prev) => prev.filter((t) => t.id !== id))' },
+      ]
+    },
+
+    filter(name) {
+      return [
+        { layer: 'react', title: `Filter "${name}" dipilih`,
+          text: 'Filter tidak memanggil server sama sekali. Semua todo sudah ada di state <code>todos</code>, jadi React cukup menyaring di browser. Tidak ada request dan tidak ada query, itu sebabnya tabel database tidak berubah.',
+          code: `const FILTERS = {\n  Semua: () => true,\n  Aktif: (todo) => !todo.done,\n  Selesai: (todo) => todo.done,\n}\n\nconst visibleTodos = todos.filter(FILTERS[filter])` },
+      ]
+    },
+  }
+
+  // Centang dan edit sama-sama memakai PATCH, hanya langkah pertamanya yang beda
+  function patchSteps(row, body, first) {
+    return [
+      first,
+      { layer: 'http', title: 'Browser mengirim request',
+        text: `Hanya field yang berubah yang dikirim. ${viaProxy}`,
+        code: httpReq('PATCH', `/api/todos/${row.id}`, body) },
+      { layer: 'express', title: "Route app.patch('/api/todos/:id')",
+        text: 'Server mencari todo dulu, kalau tidak ada membalas 404. Field yang tidak dikirim memakai nilai lama, dan <code>done</code> diubah dari true/false menjadi 1/0 untuk SQLite.',
+        code: CODE.patch },
+      { layer: 'sqlite', title: 'Cari dulu, lalu ubah',
+        text: 'Dua query: <code>SELECT</code> untuk memastikan todo ada, lalu <code>UPDATE ... RETURNING *</code> yang langsung mengembalikan baris versi baru.',
+        code: `SELECT * FROM todos WHERE id = ?\n-- parameter: [${row.id}]\n\nUPDATE todos SET title = ?, done = ? WHERE id = ? RETURNING *\n-- parameter: ${JSON.stringify([row.title, row.done, row.id])}` },
+      { layer: 'resp', title: 'Server membalas 200 OK',
+        text: 'Body-nya todo versi terbaru dari database.',
+        code: httpRes('200 OK', toTodo(row)) },
+      { layer: 'react', title: 'Satu todo diganti di state',
+        text: 'Hanya todo dengan id yang sama yang diganti, sisanya tetap.',
+        code: 'setTodos((prev) => prev.map((t) => (t.id === id ? updated : t)))' },
+    ]
+  }
+
+  let trace = { title: '', steps: [], shown: 1 }
+  function setTrace(title, steps) {
+    trace = { title, steps, shown: 1 }
+    renderTrace()
+  }
+  function renderTrace() {
+    const { steps, shown } = trace
+    $('#trace-title').textContent = `Jejak: ${trace.title}`
+    $('#trace-count').textContent = `Langkah ${shown} dari ${steps.length}`
+    $('#trace-steps').innerHTML = steps.slice(0, shown).map((s, i) => `
+      <li class="step l-${s.layer}${i === shown - 1 ? ' current' : ''}">
+        <div class="step-head"><span class="num">${i + 1}</span><span class="chip">${LAYER_NAME[s.layer]}</span><strong>${esc(s.title)}</strong></div>
+        <p>${s.text}</p>
+        ${pre(s.code)}
+      </li>`).join('')
+    const done = shown >= steps.length
+    $('#trace-next').disabled = done
+    $('#trace-all').disabled = done
+  }
+  $('#trace-next').addEventListener('click', () => {
+    trace.shown++
+    renderTrace()
+    $('#trace-steps').lastElementChild.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  })
+  $('#trace-all').addEventListener('click', () => {
+    trace.shown = trace.steps.length
+    renderTrace()
+  })
+
+  function renderPlay() {
+    const todos = [...db.rows].sort((a, b) => b.id - a.id).map(toTodo)
+    const visible = todos.filter(FILTERS[filter])
+    const active = todos.filter((t) => !t.done).length
+
+    $('#todo-list').innerHTML = visible.length
+      ? visible.map((t) => `
+        <li class="todo${t.done ? ' done' : ''}" data-id="${t.id}">
+          <input type="checkbox" ${t.done ? 'checked' : ''} aria-label="Tandai selesai" />
+          ${t.id === editingId
+            ? `<input class="edit" value="${esc(t.title)}" aria-label="Edit todo" />`
+            : `<span title="Klik dua kali untuk mengedit">${esc(t.title)}</span>`}
+          <button class="delete" aria-label="Hapus todo">×</button>
+        </li>`).join('')
+      : `<li class="empty">${todos.length ? 'Tidak ada todo di sini.' : 'Belum ada todo. Tambahkan satu di atas!'}</li>`
+
+    $('#app-foot').innerHTML = `
+      <span>${active} belum selesai</span>
+      <div class="filters">${Object.keys(FILTERS).map((name) =>
+        `<button data-filter="${name}" aria-pressed="${name === filter}">${name}</button>`).join('')}</div>`
+
+    $('#db-rows').innerHTML = db.rows.length
+      ? db.rows.map((r) => `
+        <tr class="${r.id === changedId ? 'flash' : ''}">
+          <td>${r.id}</td><td class="title-cell">${esc(r.title)}</td><td>${r.done}</td><td>${r.created_at}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4">(kosong)</td></tr>'
+    changedId = null
+
+    const edit = $('#todo-list .edit')
+    if (edit) { edit.focus(); edit.select() }
+  }
+
+  const input = $('#add-input')
+  input.addEventListener('input', () => { $('#add-btn').disabled = !input.value.trim() })
+  $('#add-form').addEventListener('submit', (e) => {
+    e.preventDefault()
+    const title = input.value.trim()
+    if (!title) return
+    input.value = ''
+    $('#add-btn').disabled = true
+    const row = { id: db.nextId++, title, done: 0, created_at: now() }
+    db.rows.push(row)
+    changedId = row.id
+    setTrace('tambah todo', TRACES.add(row))
+    renderPlay()
+  })
+
+  const idOf = (el) => Number(el.closest('.todo').dataset.id)
+  const list = $('#todo-list')
+  list.addEventListener('change', (e) => {
+    if (e.target.type !== 'checkbox') return
+    const row = findRow(idOf(e.target))
+    row.done = row.done ? 0 : 1
+    changedId = row.id
+    setTrace('centang todo', TRACES.toggle(row))
+    renderPlay()
+  })
+  list.addEventListener('click', (e) => {
+    if (!e.target.matches('.delete')) return
+    const row = findRow(idOf(e.target))
+    db.rows = db.rows.filter((r) => r !== row)
+    setTrace('hapus todo', TRACES.remove(row))
+    renderPlay()
+  })
+  list.addEventListener('dblclick', (e) => {
+    if (e.target.tagName !== 'SPAN') return
+    editingId = idOf(e.target)
+    renderPlay()
+  })
+  list.addEventListener('keydown', (e) => {
+    if (e.target.matches('.edit') && e.key === 'Enter') e.target.blur()
+  })
+  list.addEventListener('focusout', (e) => {
+    if (!e.target.matches('.edit') || editingId === null) return
+    const row = findRow(editingId)
+    editingId = null
+    const title = e.target.value.trim()
+    if (title && title !== row.title) {
+      row.title = title
+      changedId = row.id
+      setTrace('edit todo', TRACES.edit(row))
+    }
+    renderPlay()
+  })
+  $('#app-foot').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-filter]')
+    if (!btn) return
+    filter = btn.dataset.filter
+    setTrace('ganti filter', TRACES.filter(filter))
+    renderPlay()
+  })
+  $('#reload').addEventListener('click', () => {
+    filter = 'Semua'
+    setTrace('buka halaman', TRACES.load())
+    renderPlay()
+  })
+
+  // ---------- 5. API ----------
+  const API = [
+    {
+      method: 'GET', path: '/api/todos', body: '', desc: 'Ambil semua todo, terbaru di atas',
+      req: 'curl http://localhost:3001/api/todos',
+      ok: `200 OK\n\n[\n  { "id": 2, "title": "Coba docker compose up", "done": false, "created_at": "2026-11-14 09:12:03" },\n  { "id": 1, "title": "Belajar React", "done": true, "created_at": "2026-11-14 08:30:00" }\n]`,
+      err: '', errNote: 'Tidak ada error khusus. Kalau belum ada todo, server membalas array kosong [].',
+    },
+    {
+      method: 'POST', path: '/api/todos', body: '{ title }', desc: 'Tambah todo baru',
+      req: `curl -X POST http://localhost:3001/api/todos \\\n  -H "Content-Type: application/json" \\\n  -d '{"title":"Belajar Express"}'`,
+      ok: `201 Created\n\n{ "id": 3, "title": "Belajar Express", "done": false, "created_at": "2026-11-14 10:05:41" }`,
+      err: `400 Bad Request\n\n{ "error": "Judul todo tidak boleh kosong" }`,
+      errNote: 'Kalau title tidak dikirim, kosong, atau hanya berisi spasi.',
+    },
+    {
+      method: 'PATCH', path: '/api/todos/:id', body: '{ title?, done? }', desc: 'Ubah judul dan/atau status selesai',
+      req: `curl -X PATCH http://localhost:3001/api/todos/3 \\\n  -H "Content-Type: application/json" \\\n  -d '{"done":true}'`,
+      ok: `200 OK\n\n{ "id": 3, "title": "Belajar Express", "done": true, "created_at": "2026-11-14 10:05:41" }`,
+      err: `404 Not Found\n\n{ "error": "Todo tidak ditemukan" }\n\n400 Bad Request\n\n{ "error": "Judul todo tidak boleh kosong" }`,
+      errNote: 'Boleh kirim title saja, done saja, atau keduanya. 404 kalau id tidak ada, 400 kalau title dikirim tetapi kosong.',
+    },
+    {
+      method: 'DELETE', path: '/api/todos/:id', body: '', desc: 'Hapus todo',
+      req: 'curl -X DELETE http://localhost:3001/api/todos/3',
+      ok: '204 No Content\n\n(tanpa body)',
+      err: `404 Not Found\n\n{ "error": "Todo tidak ditemukan" }`,
+      errNote: 'Kalau id tidak ada, misalnya sudah dihapus sebelumnya.',
+    },
+  ]
+  let apiSel = 0
+  function renderApi() {
+    $('#api-list').innerHTML = API.map((a, i) => `
+      <button class="api-row" data-i="${i}" aria-pressed="${i === apiSel}">
+        <span class="chip method m-${a.method.toLowerCase()}">${a.method}</span>
+        <span><code>${a.path}</code>${a.body ? `<small>body: ${a.body}</small>` : ''}</span>
+        <span class="desc">${a.desc}</span>
+      </button>`).join('')
+    const a = API[apiSel]
+    $('#api-detail').innerHTML = `
+      <h3><span class="chip method m-${a.method.toLowerCase()}">${a.method}</span><code>${a.path}</code></h3>
+      <p class="sub-label">Contoh request</p>${pre(a.req)}
+      <p class="sub-label">Respons sukses</p>${pre(a.ok)}
+      <p class="sub-label">Respons error</p>${pre(a.err)}
+      <p class="note">${a.errNote}</p>`
+  }
+  $('#api-list').addEventListener('click', (e) => {
+    const row = e.target.closest('.api-row')
+    if (!row) return
+    apiSel = Number(row.dataset.i)
+    renderApi()
+    showOnPhone($('#api-detail'))
+  })
+
+  // ---------- 6. Struktur folder ----------
+  const TREE = [
+    { d: 0, name: 'Dockerfile', text: 'Resep image Docker dua tahap: tahap 1 mem-build frontend dengan Vite, tahap 2 menjalankan backend yang sekaligus menyajikan hasil build itu.' },
+    { d: 0, name: 'docker-compose.yml', text: 'Satu service <code>app</code> di port 3001 dengan volume <code>todos-data</code> di <code>/data</code> untuk database. Inilah yang dibaca oleh <code>docker compose up</code>.' },
+    { d: 0, name: '.dockerignore', text: 'File yang tidak ikut dikirim saat build image: <code>node_modules</code>, <code>dist</code>, <code>*.db</code>, dan <code>.git</code>. Build jadi lebih cepat dan database lokal tidak terbawa ke image.' },
+    { d: 0, name: '.gitignore', text: '<code>node_modules</code>, <code>dist</code>, dan file database tidak dimasukkan ke git.' },
+    { d: 0, name: 'README.md', text: 'Cara menjalankan, struktur, dan tabel API dalam bentuk teks.' },
+    { d: 0, name: 'docs/', dir: true, text: 'Dokumentasi tambahan.' },
+    { d: 1, name: 'cara-kerja.html', text: 'Halaman yang sedang kamu baca. Satu file HTML berisi CSS dan JavaScript sendiri, tanpa library luar.' },
+    { d: 0, name: 'backend/', dir: true, text: 'Server API. Hanya punya satu dependensi: <code>express</code>.' },
+    { d: 1, name: 'package.json', text: 'Dependensi <code>express</code> dan dua script: <code>dev</code> (dengan <code>node --watch</code>, restart otomatis) dan <code>start</code>. Bagian <code>engines</code> mensyaratkan Node 22.13+ karena memakai <code>node:sqlite</code>.' },
+    { d: 1, name: 'server.js', text: 'Seluruh backend dalam satu file: koneksi SQLite, pembuatan tabel, empat route API, dan penyajian file statis untuk mode Docker.' },
+    { d: 1, name: 'todos.db', gen: true, text: 'File database SQLite. Dibuat otomatis saat backend pertama kali jalan dan tidak masuk git. Di Docker, file ini ada di volume sebagai <code>/data/todos.db</code>.' },
+    { d: 0, name: 'frontend/', dir: true, text: 'Aplikasi React yang dijalankan dan di-build oleh Vite.' },
+    { d: 1, name: 'package.json', text: '<code>react</code> dan <code>react-dom</code> sebagai dependensi, <code>vite</code> dan <code>@vitejs/plugin-react</code> sebagai devDependencies. Script: <code>dev</code>, <code>build</code>, <code>preview</code>.' },
+    { d: 1, name: 'vite.config.js', text: 'Mengaktifkan plugin React dan proxy <code>/api</code> ke backend di port 3001 saat development.' },
+    { d: 1, name: 'index.html', text: 'Halaman dasar berisi <code>&lt;div id="root"&gt;</code> dan memuat <code>src/main.jsx</code>. Vite memakainya sebagai titik awal saat dev maupun build.' },
+    { d: 1, name: 'src/', dir: true, text: 'Kode sumber React.' },
+    { d: 2, name: 'main.jsx', text: 'Titik masuk React: memasang komponen <code>App</code> ke <code>#root</code> di dalam <code>StrictMode</code> dan memuat <code>App.css</code>.' },
+    { d: 2, name: 'App.jsx', text: 'Semua tampilan dan logika: state todo, helper <code>api()</code> untuk fetch, filter Semua/Aktif/Selesai, dan komponen <code>TodoItem</code> untuk centang, edit, dan hapus.' },
+    { d: 2, name: 'App.css', text: 'Gaya tampilan dengan variabel warna CSS. Otomatis ikut mode gelap sistem lewat <code>prefers-color-scheme</code>.' },
+  ]
+  // Path lengkap tiap item dihitung dari folder induknya
+  const stack = []
+  TREE.forEach((t) => { stack[t.d] = t.name; t.path = stack.slice(0, t.d + 1).join('') })
+  let treeSel = TREE.findIndex((t) => t.name === 'server.js')
+
+  function renderTree() {
+    $('#tree').innerHTML = TREE.map((t, i) => `
+      <li><button data-i="${i}" aria-pressed="${i === treeSel}" style="padding-left:${10 + t.d * 20}px">
+        <span class="icon">${t.dir ? '▾' : '·'}</span>
+        <span class="${t.dir ? 'dir' : ''}${t.gen ? ' gen' : ''}">${t.name}</span>
+      </button></li>`).join('')
+    const t = TREE[treeSel]
+    $('#tree-detail').innerHTML = `
+      <h3><code>${t.path}</code>${t.gen ? '<span class="chip">dibuat otomatis</span>' : ''}</h3>
+      <p>${t.text}</p>`
+  }
+  $('#tree').addEventListener('click', (e) => {
+    const btn = e.target.closest('button')
+    if (!btn) return
+    treeSel = Number(btn.dataset.i)
+    renderTree()
+    showOnPhone($('#tree-detail'))
+  })
+
+  // ---------- 7. Cara menjalankan ----------
+  $('#run-tabs').addEventListener('click', (e) => {
+    const btn = e.target.closest('button')
+    if (!btn) return
+    press($('#run-tabs'), btn)
+    document.querySelectorAll('[data-panel]').forEach((p) => { p.hidden = p.dataset.panel !== btn.dataset.tab })
+  })
+
+  document.addEventListener('click', async (e) => {
+    if (!e.target.matches('.copy')) return
+    const text = e.target.previousElementSibling.textContent
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Cadangan untuk browser yang menolak clipboard API di file://
+      const ta = Object.assign(document.createElement('textarea'), { value: text })
+      document.body.append(ta)
+      ta.select()
+      document.execCommand('copy')
+      ta.remove()
+    }
+    e.target.textContent = 'Tersalin ✓'
+    setTimeout(() => { e.target.textContent = 'Salin' }, 1500)
+  })
+
+  // ---------- Mulai ----------
+  renderArch()
+  renderPlay()
+  setTrace('buka halaman', TRACES.load())
+  renderApi()
+  renderTree()
+</script>
+</body>
+</html>
